@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=Support for NVIDIA Prime
+Comment=Turned off so polybar's tray only shows Wi-Fi, volume and Bluetooth. Delete this file to bring it back.
+Exec=/usr/lib/nvidia-prime-applet/nvidia-prime
+Hidden=true

@@ -1,0 +1,62 @@
+#!/usr/bin/python3
+# Workspace dots for polybar (module/workspaces), all in Gruvbox orange: ● current workspace, ○ the others.
+# Switching workspace fades the old dot out and the new one in. Click a dot to switch to that workspace.
+import time
+
+from Xlib import X, display
+
+COLOUR, BACKGROUND = "#fe8019", "#1d2021"  # Gruvbox orange; the bar's background, which fades blend toward
+FULL, HOLLOW = "●", "○"
+FADE_SECONDS, FADE_FRAMES = 0.18, 8
+
+d = display.Display()
+root = d.screen().root
+WATCHED = {d.intern_atom(a) for a in ("_NET_CURRENT_DESKTOP", "_NET_NUMBER_OF_DESKTOPS")}
+
+
+def prop(name, default):
+    p = root.get_full_property(d.intern_atom(name), X.AnyPropertyType)
+    return p.value[0] if p else default
+
+
+def mix(start, end, t):
+    """Colour t of the way from start to end (#rrggbb)."""
+    rgb = lambda c: [int(c[i:i + 2], 16) for i in (1, 3, 5)]
+    return "#" + "".join(f"{round(x + (y - x) * t):02x}" for x, y in zip(rgb(start), rgb(end)))
+
+
+def draw(count, dots=None):
+    """dots: {workspace: (glyph, colour)} overrides; the rest are orange rings."""
+    parts = []
+    for i in range(count):
+        glyph, colour = (dots or {}).get(i, (HOLLOW, COLOUR))
+        parts.append(f"%{{A1:wmctrl -s {i}:}}%{{F{colour}}}{glyph}%{{F-}}%{{A}}")
+    print(" ".join(parts), flush=True)
+
+
+def fade(old, new, count):
+    """Old ● dims away into the background while the new ● brightens in."""
+    for frame in range(1, FADE_FRAMES + 1):
+        if d.pending_events():  # switched again mid-fade: jump straight to the newest state
+            return
+        t = frame / FADE_FRAMES
+        dots = {new: (FULL, mix(BACKGROUND, COLOUR, t))}
+        if old < count and t < 1:
+            dots[old] = (FULL, mix(COLOUR, BACKGROUND, t))
+        draw(count, dots)
+        time.sleep(FADE_SECONDS / FADE_FRAMES)
+
+
+root.change_attributes(event_mask=X.PropertyChangeMask)
+current, count = prop("_NET_CURRENT_DESKTOP", 0), prop("_NET_NUMBER_OF_DESKTOPS", 1)
+draw(count, {current: (FULL, COLOUR)})
+while True:
+    event = d.next_event()
+    if event.type != X.PropertyNotify or event.atom not in WATCHED:
+        continue
+    while d.pending_events():  # handle a burst of changes as one
+        d.next_event()
+    old, current, count = current, prop("_NET_CURRENT_DESKTOP", 0), prop("_NET_NUMBER_OF_DESKTOPS", 1)
+    if old != current:
+        fade(old, current, count)
+    draw(count, {current: (FULL, COLOUR)})
