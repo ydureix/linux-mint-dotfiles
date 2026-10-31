@@ -1,0 +1,44 @@
+#!/usr/bin/python3
+# Volume icon for polybar (module/volume): a speaker that gets fuller as it gets louder, grey and crossed out when muted.
+# With no arguments it prints the icon and updates it whenever the volume changes.
+# "polybar-volume up" / "down" change the volume by 5% (never above 100%), for scrolling on the icon.
+import re
+import subprocess
+import sys
+
+SINK = "@DEFAULT_SINK@"
+STEP = 5
+LOW, MEDIUM, HIGH, MUTED = "\U000F057F", "\U000F0580", "\U000F057E", "\U000F0581"  # Symbols Nerd Font speakers
+GREY = "#a89984"
+
+
+def pactl(*args):
+    return subprocess.run(["pactl", *args], capture_output=True, text=True).stdout
+
+
+def get_volume():
+    match = re.search(r"(\d+)%", pactl("get-sink-volume", SINK))
+    return int(match.group(1)) if match else 0
+
+
+def draw(last=[None]):
+    volume, muted = get_volume(), "yes" in pactl("get-sink-mute", SINK)
+    if muted or volume == 0:
+        line = f"%{{F{GREY}}}%{{T4}}{MUTED}%{{T-}}%{{F-}}"
+    else:
+        line = f"%{{T4}}{LOW if volume < 34 else MEDIUM if volume < 67 else HIGH}%{{T-}}"
+    if line != last[0]:  # playing audio sends lots of events; only redraw when the icon changes
+        print(line, flush=True)
+        last[0] = line
+
+
+if sys.argv[1:] == ["up"]:
+    pactl("set-sink-volume", SINK, f"{min(100, get_volume() + STEP)}%")
+elif sys.argv[1:] == ["down"]:
+    pactl("set-sink-volume", SINK, f"{max(0, get_volume() - STEP)}%")
+else:
+    draw()
+    watcher = subprocess.Popen(["pactl", "subscribe"], stdout=subprocess.PIPE, text=True)
+    for line in watcher.stdout:
+        if "sink" in line or "server" in line:
+            draw()

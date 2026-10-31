@@ -7,9 +7,9 @@ Each folder is a [GNU Stow](https://www.gnu.org/software/stow/) package. The fil
 
 | Folder | What's in it | Linked to |
 |---|---|---|
-| `polybar/` | Top bar config, `launch.sh` (also starts the Wi-Fi and volume tray icons), login autostart entry | `~/.config/polybar`, `~/.config/autostart/polybar.desktop` |
+| `polybar/` | Top bar config (no tray: Wi-Fi and volume are built-in modules), `launch.sh`, login autostart entries (polybar on, NVIDIA Prime tray icon off) | `~/.config/polybar`, `~/.config/autostart/polybar.desktop` |
 | `rofi/` | `window-grid.rasi` (grid, colours, size) and `rofi-menu.rasi` (power buttons) | `~/.config/rofi` |
-| `scripts/` | `rofi-menu` (Super+Tab app menu with Log out / Sleep / Power off), `rofi-windows` (Alt+Tab window switcher), `volume-tray` (tray volume slider) | `~/.local/bin` |
+| `scripts/` | `rofi-menu` (Super+Tab app menu with Log out / Sleep / Power off), `rofi-windows` (Alt+Tab window switcher), `rofi-wifi` (Wi-Fi drop-down, click the Wi-Fi icon on the bar), `polybar-workspaces` (workspace dots), `volume-popup` (drop-down volume slider, click the volume on the bar) | `~/.local/bin` |
 | `cinnamon/` | Cinnamon settings export: theme, icons, shortcuts, workspaces, panel | loaded with `dconf` (below) |
 | `terminal/` | GNOME Terminal profiles (Gruvbox colours) | loaded with `dconf` (below) |
 
@@ -38,3 +38,6 @@ Themes are installed separately (they're large and come from their own projects)
 - Icons: that repo's `icons/Gruvbox_Dark` folder, copied to `~/.icons/Gruvbox-Tan`
   (then `gtk-update-icon-cache -f ~/.icons/Gruvbox-Tan`)
 - Cursor: Bibata-Modern-Classic comes with Mint (`mint-cursor-themes`)
+- Bar icons (Wi-Fi, volume): Symbols Nerd Font from [Nerd Fonts](https://github.com/ryanoasis/nerd-fonts/releases)
+  (`NerdFontsSymbolsOnly.tar.xz`), with `SymbolsNerdFont-Regular.ttf` copied to `~/.local/share/fonts`
+  (then `fc-cache -f`)
