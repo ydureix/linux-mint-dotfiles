@@ -1,0 +1,20 @@
+[legacy/profiles:]
+default='6f59e838-c7bf-48ab-8620-1fd1d3a26985'
+list=['6f59e838-c7bf-48ab-8620-1fd1d3a26985']
+
+[legacy/profiles:/:6f59e838-c7bf-48ab-8620-1fd1d3a26985]
+audible-bell=false
+background-color='#32302F'
+background-transparency-percent=19
+bold-is-bright=true
+cursor-background-color='#DDC7A1'
+cursor-colors-set=true
+cursor-foreground-color='#32302F'
+default-size-columns=105
+default-size-rows=30
+foreground-color='#DDC7A1'
+palette=['#32302F', '#EA6962', '#A9B665', '#D8A657', '#7DAEA3', '#D3869B', '#89B482', '#DDC7A1', '#7C6F64', '#EA6962', '#A9B665', '#D8A657', '#7DAEA3', '#D3869B', '#89B482', '#FBF1C7']
+use-theme-colors=true
+use-theme-transparency=false
+use-transparent-background=true
+visible-name='Gruvbox Material Dark Soft'

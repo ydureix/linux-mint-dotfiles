@@ -1,0 +1,42 @@
+/* Rofi Menu: the Window Grid look (window-grid.rasi) plus Log out / Sleep / Power off buttons at the bottom.
+   Change colours, grid size and icon size in window-grid.rasi; this file only adds the buttons.
+   Each button presses a rofi "custom key" that ~/.local/bin/rofi-menu acts on. */
+@import "window-grid"
+
+mainbox {
+    children: [ inputbar, listview, box-power ];
+    spacing:  12px;
+}
+
+box-power {
+    orientation: horizontal;
+    expand:      false;
+    spacing:     8px;
+    children:    [ button-logout, button-sleep, button-poweroff ];
+}
+
+button {
+    expand:           true;
+    padding:          8px;
+    border-radius:    8px;
+    horizontal-align: 0.5;
+    background-color: rgba(60, 56, 54, 60%);                /* bg1 #3c3836 */
+    text-color:       @normal-foreground;
+    cursor:           pointer;
+}
+
+button-logout {
+    content: "Log out";
+    action:  "kb-custom-1";
+}
+
+button-sleep {
+    content: "Sleep";
+    action:  "kb-custom-2";
+}
+
+button-poweroff {
+    content:    "Power off";
+    action:     "kb-custom-3";
+    text-color: #ea6962;                                     /* red */
+}

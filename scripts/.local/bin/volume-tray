@@ -1,0 +1,146 @@
+#!/usr/bin/python3
+# Volume tray icon for polybar's tray.
+#   Left-click:   simple up/down volume slider under the icon (click away or Esc to close)
+#   Scroll:       volume up/down
+#   Middle-click: mute / unmute
+#   Right-click:  full mixer (pavucontrol)
+# Started by ~/.config/polybar/launch.sh. Colours follow your GTK theme plus the CSS below.
+import re
+import subprocess
+import warnings
+
+import gi
+
+# Gtk.StatusIcon is old but still the way to put an icon in polybar's tray
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+
+gi.require_version("Gtk", "3.0")
+gi.require_version("Gdk", "3.0")
+from gi.repository import Gdk, GLib, Gtk
+
+STEP = 5             # % per scroll notch
+SLIDER_HEIGHT = 160  # px
+CSS = b"""
+#volume-popup { background-color: #32302f; border: 2px solid #d8a657; }
+#volume-popup scale highlight { background-color: #d8a657; }
+#volume-popup label { color: #ddc7a1; }
+"""
+SINK = "@DEFAULT_SINK@"
+
+
+def pactl(*args):
+    return subprocess.run(["pactl", *args], capture_output=True, text=True).stdout
+
+
+def get_volume():
+    match = re.search(r"(\d+)%", pactl("get-sink-volume", SINK))
+    return int(match.group(1)) if match else 0
+
+
+def is_muted():
+    return "yes" in pactl("get-sink-mute", SINK)
+
+
+def set_volume(percent):
+    pactl("set-sink-volume", SINK, f"{max(0, min(100, percent))}%")
+
+
+class VolumeTray:
+    def __init__(self):
+        self.icon = Gtk.StatusIcon()
+        self.icon.connect("button-press-event", self.on_click)
+        self.icon.connect("scroll-event", self.on_scroll)
+        self.popup = None
+        self.refresh()
+        # Follow volume changes made elsewhere (keyboard keys, mixer) to keep the icon in sync
+        self.watcher = subprocess.Popen(["pactl", "subscribe"], stdout=subprocess.PIPE, text=True)
+        GLib.io_add_watch(self.watcher.stdout, GLib.IO_IN, self.on_pactl_event)
+
+    def refresh(self):
+        volume, muted = get_volume(), is_muted()
+        if muted or volume == 0:
+            name = "audio-volume-muted"
+        elif volume < 34:
+            name = "audio-volume-low"
+        elif volume < 67:
+            name = "audio-volume-medium"
+        else:
+            name = "audio-volume-high"
+        # Symbolic icons get recoloured by the tray, so this matches the Wi-Fi icon's colour
+        self.icon.set_from_icon_name(name + "-symbolic")
+        self.icon.set_tooltip_text("Muted" if muted else f"Volume {volume}%")
+        if self.popup:
+            self.scale.handler_block(self.scale_handler)
+            self.scale.set_value(volume)
+            self.scale.handler_unblock(self.scale_handler)
+
+    def on_pactl_event(self, source, _condition):
+        line = source.readline()
+        if "sink" in line or "server" in line:
+            GLib.idle_add(self.refresh)
+        return bool(line)
+
+    def on_scroll(self, _icon, event):
+        delta = STEP if event.direction == Gdk.ScrollDirection.UP else -STEP
+        if event.direction in (Gdk.ScrollDirection.UP, Gdk.ScrollDirection.DOWN):
+            set_volume(get_volume() + delta)
+
+    def on_click(self, _icon, event):
+        if event.button == 1:
+            self.close_popup() if self.popup else self.open_popup()
+        elif event.button == 2:
+            pactl("set-sink-mute", SINK, "toggle")
+        elif event.button == 3:
+            subprocess.Popen(["pavucontrol"], start_new_session=True)
+
+    def open_popup(self):
+        self.popup = Gtk.Window(name="volume-popup", decorated=False, resizable=False,
+                                skip_taskbar_hint=True, skip_pager_hint=True)
+        self.popup.set_type_hint(Gdk.WindowTypeHint.UTILITY)
+        self.popup.set_keep_above(True)
+
+        self.scale = Gtk.Scale(orientation=Gtk.Orientation.VERTICAL, inverted=True, draw_value=False)
+        self.scale.set_range(0, 100)
+        self.scale.set_increments(STEP, STEP * 2)
+        self.scale.set_size_request(-1, SLIDER_HEIGHT)
+        self.scale.set_value(get_volume())
+        self.label = Gtk.Label(label=f"{get_volume()}%")
+        self.scale_handler = self.scale.connect("value-changed", self.on_slide)
+
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6, margin=10)
+        box.pack_start(self.scale, True, True, 0)
+        box.pack_start(self.label, False, False, 0)
+        self.popup.add(box)
+
+        self.popup.connect("focus-out-event", lambda *_: self.close_popup())
+        self.popup.connect("key-press-event",
+                           lambda _w, e: e.keyval == Gdk.KEY_Escape and self.close_popup())
+        self.popup.show_all()
+        self.place_popup()
+        self.popup.present()
+
+    def place_popup(self):
+        """Put the slider just below the tray icon, centred on it."""
+        ok, _screen, area, _orientation = self.icon.get_geometry()
+        if not ok:
+            return
+        width, _height = self.popup.get_size()
+        self.popup.move(area.x + area.width // 2 - width // 2, area.y + area.height + 8)
+
+    def on_slide(self, scale):
+        volume = int(scale.get_value())
+        set_volume(volume)
+        self.label.set_text(f"{volume}%")
+
+    def close_popup(self):
+        if self.popup:
+            self.popup.destroy()
+            self.popup = None
+
+
+style = Gtk.CssProvider()
+style.load_from_data(CSS)
+Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), style,
+                                         Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+VolumeTray()
+Gtk.main()

@@ -1,0 +1,72 @@
+/* Window Grid: a centred, scrollable 4x3 grid of open windows in see-through Gruvbox dark soft colours. */
+@import "gruvbox-dark-soft"
+
+/* See-through Gruvbox colours. The last number is opacity: 0% is invisible, 100% is solid. */
+* {
+    background:                  rgba(50, 48, 47, 75%);     /* bg0 soft #32302f */
+    background-color:            transparent;
+    normal-background:           transparent;
+    alternate-normal-background: transparent;
+    selected-normal-background:  rgba(102, 92, 84, 65%);    /* bg3 #665c54 */
+    active-background:           rgba(215, 153, 33, 35%);   /* yellow #d79921 */
+    alternate-active-background: @active-background;
+    selected-active-background:  rgba(250, 189, 47, 55%);   /* bright yellow #fabd2f */
+    active-foreground:           @gruvbox-dark-fg0;
+    urgent-foreground:           @gruvbox-dark-fg0;
+}
+
+window {
+    transparency:     "real";
+    location:         center;
+    anchor:           center;
+    width:            640px;
+    background-color: @background;
+    border:           2px;
+    border-color:     rgba(216, 166, 87, 80%);              /* tan #d8a657 */
+    border-radius:    12px;
+    padding:          14px;
+}
+
+inputbar {
+    padding:          8px 10px;
+    border-radius:    8px;
+    background-color: rgba(60, 56, 54, 60%);                /* bg1 #3c3836 */
+}
+
+listview {
+    columns:       4;
+    lines:         3;
+    fixed-height:  true;
+    fixed-columns: true;
+    flow:          horizontal;
+    scrollbar:     true;
+    spacing:       12px;
+    padding:       12px 0 0;
+    border:        0;
+}
+
+scrollbar {
+    width:         6px;
+    handle-width:  6px;
+    border-radius: 3px;
+}
+
+element {
+    orientation:   vertical;
+    padding:       10px 6px;
+    spacing:       8px;
+    border-radius: 10px;
+}
+
+/* Icon and name sit inside the element's single highlight instead of painting their own. */
+element-icon {
+    size:             48px;
+    horizontal-align: 0.5;
+    background-color: transparent;
+}
+
+element-text {
+    horizontal-align: 0.5;
+    vertical-align:   0.5;
+    background-color: transparent;
+}

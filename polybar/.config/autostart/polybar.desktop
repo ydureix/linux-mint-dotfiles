@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Polybar
+Comment=Gruvbox top bar with workspaces
+Exec=/home/rudolph/.config/polybar/launch.sh
+OnlyShowIn=X-Cinnamon;
+X-GNOME-Autostart-enabled=true
+X-GNOME-Autostart-Delay=3

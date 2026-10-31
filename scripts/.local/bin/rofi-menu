@@ -1,0 +1,60 @@
+#!/usr/bin/python3
+# Centred rofi app menu with Log out / Sleep / Power off buttons along the bottom (Super+Tab).
+# Look: ~/.config/rofi/themes/window-grid.rasi (buttons: rofi-menu.rasi).
+# Buttons also work from the keyboard: Alt+1 log out, Alt+2 sleep, Alt+3 power off.
+# Super+Tab again, Esc, or a click outside closes it.
+import os
+import shutil
+import subprocess
+
+import gi
+
+gi.require_version("Gio", "2.0")
+from gi.repository import Gio
+
+ROFI = ["rofi", "-icon-theme", "Gruvbox-Tan"]
+
+# rofi exit codes: 0 = app chosen, 10/11/12 = the buttons (kb-custom-1/2/3 in rofi-menu.rasi)
+LOG_OUT, SLEEP, POWER_OFF = 10, 11, 12
+
+
+def icon_name(app):
+    icon = app.get_icon()
+    if isinstance(icon, Gio.ThemedIcon):
+        return icon.get_names()[0]
+    return icon.to_string() if icon else "application-x-executable"
+
+
+def confirm(question):
+    """Small Yes/No prompt so a stray click can't log out or power off."""
+    answer = subprocess.run(
+        ROFI + ["-dmenu", "-p", question, "-no-custom", "-theme", "window-grid",
+                "-theme-str", "window {width: 320px;} listview {columns: 1; lines: 2;}"],
+        input="No\nYes\n", capture_output=True, text=True).stdout.strip()
+    return answer == "Yes"
+
+
+def log_out():
+    if shutil.which("bspc") and subprocess.run(["pgrep", "-x", "bspwm"], capture_output=True).returncode == 0:
+        subprocess.run(["bspc", "quit"])
+    else:
+        subprocess.run(["cinnamon-session-quit", "--logout", "--no-prompt"])
+
+
+apps = sorted((a for a in Gio.AppInfo.get_all() if a.should_show()),
+              key=lambda a: a.get_display_name().lower())
+rows = "".join(f"{a.get_display_name()}\0icon\x1f{icon_name(a)}\n" for a in apps)
+
+result = subprocess.run(
+    ROFI + ["-dmenu", "-i", "-p", "Apps", "-show-icons", "-no-custom", "-format", "i",
+            "-theme", "rofi-menu", "-kb-cancel", "Escape,Super+Tab"],
+    input=rows, capture_output=True, text=True)
+
+if result.returncode == 0 and result.stdout.strip().isdigit():
+    apps[int(result.stdout)].launch([], None)
+elif result.returncode == LOG_OUT and confirm("Log out?"):
+    log_out()
+elif result.returncode == SLEEP:
+    subprocess.run(["systemctl", "suspend"])
+elif result.returncode == POWER_OFF and confirm("Power off?"):
+    subprocess.run(["systemctl", "poweroff"])
