@@ -32,12 +32,17 @@ gtk-theme='Gruvbox-Orange-Dark-Soft'
 icon-theme='Gruvbox-Tan'
 
 [desktop/keybindings]
-custom-list=['custom0']
+custom-list=['custom0', 'custom1']
 
 [desktop/keybindings/custom-keybindings/custom0]
 binding=['<Super>Tab']
 command='/home/rudolph/.local/bin/rofi-menu'
 name='Rofi Menu'
+
+[desktop/keybindings/custom-keybindings/custom1]
+binding=['<Alt>Tab']
+command='/home/rudolph/.local/bin/rofi-windows'
+name='Rofi Windows'
 
 [desktop/keybindings/wm]
 move-to-workspace-1=['<Super><Shift>1']
@@ -49,6 +54,8 @@ switch-to-workspace-2=['<Super>2']
 switch-to-workspace-3=['<Super>3']
 switch-to-workspace-4=['<Super>4']
 switch-to-workspace-down=['<Control><Alt>Down']
+switch-windows=@as []
+switch-windows-backward=@as []
 
 [desktop/screensaver]
 layout-group=0

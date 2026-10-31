@@ -9,7 +9,7 @@ Each folder is a [GNU Stow](https://www.gnu.org/software/stow/) package. The fil
 |---|---|---|
 | `polybar/` | Top bar config, `launch.sh` (also starts the Wi-Fi and volume tray icons), login autostart entry | `~/.config/polybar`, `~/.config/autostart/polybar.desktop` |
 | `rofi/` | `window-grid.rasi` (grid, colours, size) and `rofi-menu.rasi` (power buttons) | `~/.config/rofi` |
-| `scripts/` | `rofi-menu` (Super+Tab app menu with Log out / Sleep / Power off), `volume-tray` (tray volume slider) | `~/.local/bin` |
+| `scripts/` | `rofi-menu` (Super+Tab app menu with Log out / Sleep / Power off), `rofi-windows` (Alt+Tab window switcher), `volume-tray` (tray volume slider) | `~/.local/bin` |
 | `cinnamon/` | Cinnamon settings export: theme, icons, shortcuts, workspaces, panel | loaded with `dconf` (below) |
 | `terminal/` | GNOME Terminal profiles (Gruvbox colours) | loaded with `dconf` (below) |
 

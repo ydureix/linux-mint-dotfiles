@@ -1,0 +1,10 @@
+#!/bin/sh
+# Alt+Tab window switcher in the Window Grid look (~/.config/rofi/themes/window-grid.rasi).
+# Hold Alt and tap Tab to move forward (Shift+Tab goes back); let go of Alt to switch.
+# A quick Alt+Tab tap jumps to the previous window. Esc cancels; click a window to pick it.
+exec rofi -show window -show-icons -icon-theme Gruvbox-Tan -theme window-grid \
+    -window-format '{t}' -selected-row 1 \
+    -kb-row-down 'Alt+Tab,Down' \
+    -kb-row-up 'Alt+ISO_Left_Tab,Alt+Shift+Tab,Up' \
+    -kb-accept-entry '!Alt_L,!Alt_R,Return,KP_Enter' \
+    -kb-cancel 'Escape,Alt+Escape'
