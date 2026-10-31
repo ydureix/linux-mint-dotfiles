@@ -12,7 +12,7 @@ import gi
 
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
-from gi.repository import Gdk, Gtk
+from gi.repository import Gdk, GLib, Gtk
 
 STEP = 5             # % per scroll notch or arrow key
 SLIDER_HEIGHT = 160  # px
@@ -73,9 +73,11 @@ style = Gtk.CssProvider()
 style.load_from_data(CSS)
 Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), style, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 
-popup = Gtk.Window(name="volume-popup", decorated=False, resizable=False, skip_taskbar_hint=True, skip_pager_hint=True)
-popup.set_type_hint(Gdk.WindowTypeHint.UTILITY)
-popup.set_keep_above(True)
+# A pop-up window like rofi's: the window manager doesn't manage it, so opening it doesn't move focus away from
+# the window you're using. It borrows the mouse and keyboard while open instead (see grab below).
+popup = Gtk.Window(type=Gtk.WindowType.POPUP, name="volume-popup")
+popup.set_type_hint(Gdk.WindowTypeHint.DROPDOWN_MENU)
+popup.add_events(Gdk.EventMask.BUTTON_PRESS_MASK)
 visual = popup.get_screen().get_rgba_visual()
 if visual:  # see-through corners, so the rounded border shows
     popup.set_visual(visual)
@@ -94,15 +96,31 @@ box.pack_start(scale, True, True, 0)
 box.pack_start(label, False, False, 0)
 popup.add(box)
 
-popup.connect("focus-out-event", close)
+def grab(*_):
+    """Borrow the mouse and keyboard, so clicks anywhere else and Esc come here (to close it)."""
+    seat = Gdk.Display.get_default().get_default_seat()
+    if seat.grab(popup.get_window(), Gdk.SeatCapabilities.ALL, True, None, None, None) != Gdk.GrabStatus.SUCCESS:
+        GLib.timeout_add(50, grab)  # the click on the bar may not have been released yet; try again shortly
+    return False
+
+
+def on_press(_window, event):
+    """A click outside the slider closes it (clicks on the slider itself go to the slider)."""
+    x, y = popup.get_position()
+    width, height = popup.get_size()
+    if not (x <= event.x_root < x + width and y <= event.y_root < y + height):
+        close()
+
+
+popup.connect("map-event", grab)
+popup.connect("button-press-event", on_press)
 popup.connect("key-press-event", lambda _w, e: e.keyval == Gdk.KEY_Escape and close())
 popup.connect("destroy", Gtk.main_quit)
-popup.show_all()
 
 # Centre it under the mouse, just below the bar
 _screen, x, _y = Gdk.Display.get_default().get_default_seat().get_pointer().get_position()
+popup.show_all()
 width, _height = popup.get_size()
 popup.move(x - width // 2, BAR_HEIGHT + 6)
-popup.present()
 scale.grab_focus()
 Gtk.main()

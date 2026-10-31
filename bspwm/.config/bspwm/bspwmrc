@@ -35,7 +35,6 @@ bspc config pointer_modifier     mod4    # hold Super and drag to move/resize fl
 
 # Small windows float instead of tiling
 bspc rule -r '*'
-bspc rule -a Volume-popup state=floating
 bspc rule -a Pavucontrol state=floating
 bspc rule -a Nm-connection-editor state=floating
 bspc rule -a Blueman-manager state=floating

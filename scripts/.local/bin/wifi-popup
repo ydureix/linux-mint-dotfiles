@@ -1,0 +1,300 @@
+#!/usr/bin/python3
+# Wi-Fi drop-down, opened by clicking the Wi-Fi icon on polybar. Opens under the mouse, just below the bar,
+# in the same look as the volume slider (~/.local/bin/volume-popup), without taking focus from your window.
+# Click a network and the bottom of the menu opens: a "Switch" button if its password is saved,
+# or a password box if it's new. The top row turns Wi-Fi on/off.
+# Click outside or press Esc to close; clicking the Wi-Fi icon again also closes it.
+import os
+import re
+import signal
+import subprocess
+import threading
+import time
+
+import gi
+
+gi.require_version("Gtk", "3.0")
+gi.require_version("Gdk", "3.0")
+gi.require_version("Pango", "1.0")
+from gi.repository import Gdk, GLib, Gtk, Pango
+
+BAR_HEIGHT = 34      # polybar's height including its border; the drop-down opens just below it
+WIDTH = 320          # px
+VISIBLE_ROWS = 8     # networks shown before the list scrolls
+SIGNAL = ["\U000F091F", "\U000F0922", "\U000F0925", "\U000F0928"]  # weak .. strong, same icons as the bar
+WIFI_ON, WIFI_OFF, LOCK = "\U000F05A9", "\U000F05AA", "\U000F033E"
+CSS = b"""
+#wifi-popup { background-color: #1d2021; border: 2px solid #87bd89; border-radius: 10px; }
+#wifi-popup label { font-family: Ubuntu; font-size: 11pt; color: #d5c4a1; }
+#wifi-popup label.icon { font-family: "Symbols Nerd Font"; }
+#wifi-popup label.dim { color: #a89984; }
+#wifi-popup label.error { color: #fb4934; }
+#wifi-popup list, #wifi-popup scrolledwindow, #wifi-popup viewport { background-color: transparent; }
+#wifi-popup row { background-color: transparent; padding: 6px 8px; border-radius: 8px; }
+#wifi-popup row:hover, #wifi-popup row:selected { background-color: rgba(102, 92, 84, 0.65); }
+#wifi-popup row.connected { background-color: rgba(215, 153, 33, 0.35); }
+#wifi-popup entry { background-color: #3c3836; color: #d5c4a1; caret-color: #d5c4a1; border: none;
+                    border-radius: 6px; padding: 2px 8px; min-height: 22px; box-shadow: none;
+                    font-family: Ubuntu; font-size: 10pt; }
+#wifi-popup button { background-image: none; background-color: #3c3836; border: none; border-radius: 6px;
+                     padding: 6px 12px; box-shadow: none; }
+#wifi-popup button:hover { background-color: #504945; }
+#wifi-popup button.primary { background-color: #87bd89; }
+#wifi-popup button.primary:hover { background-color: #9fcca1; }
+#wifi-popup button.primary label { color: #1d2021; }
+#wifi-popup separator { background-color: #3c3836; min-height: 1px; }
+"""
+RUNTIME = os.environ.get("XDG_RUNTIME_DIR", "/tmp")
+# Clicking the bar while this is open closes it; remembering when it closed stops that same click reopening it.
+CLOSED_AT = os.path.join(RUNTIME, "wifi-popup.closed")
+PID_FILE = os.path.join(RUNTIME, "wifi-popup.pid")
+
+
+def nmcli(*args):
+    return subprocess.run(["nmcli", *args], capture_output=True, text=True)
+
+
+def fields(line):
+    """Split one line of nmcli -t output (colons inside values come escaped as \\:)."""
+    return [f.replace("\\:", ":") for f in re.split(r"(?<!\\):", line)]
+
+
+def networks(rescan="no"):
+    """Nearby networks, connected first then strongest, one per name: dicts with ssid, signal, secured, connected."""
+    found = {}
+    for line in nmcli("-t", "-f", "IN-USE,SIGNAL,SECURITY,SSID", "device", "wifi", "list", "--rescan", rescan).stdout.splitlines():
+        in_use, strength, security, ssid = fields(line)
+        if not ssid:  # hidden network
+            continue
+        net = {"ssid": ssid, "signal": int(strength or 0), "secured": bool(security), "connected": in_use == "*"}
+        old = found.get(ssid)
+        if not old or net["connected"] or (net["signal"] > old["signal"] and not old["connected"]):
+            found[ssid] = net
+    return sorted(found.values(), key=lambda n: (not n["connected"], -n["signal"]))
+
+
+def saved_networks():
+    return {fields(l)[0] for l in nmcli("-t", "-f", "NAME,TYPE", "connection", "show").stdout.splitlines()
+            if fields(l)[1] == "802-11-wireless"}
+
+
+def label(text, *classes, **props):
+    widget = Gtk.Label(label=text, **props)
+    for c in classes:
+        widget.get_style_context().add_class(c)
+    return widget
+
+
+class WifiPopup:
+    def __init__(self):
+        # A pop-up window like rofi's: the window manager doesn't manage it, so opening it doesn't move focus away
+        # from the window you're using. It borrows the mouse and keyboard while open instead (see grab).
+        self.window = Gtk.Window(type=Gtk.WindowType.POPUP, name="wifi-popup")
+        self.window.set_type_hint(Gdk.WindowTypeHint.DROPDOWN_MENU)
+        self.window.add_events(Gdk.EventMask.BUTTON_PRESS_MASK)
+        visual = self.window.get_screen().get_rgba_visual()
+        if visual:  # see-through corners, so the rounded border shows
+            self.window.set_visual(visual)
+        self.window.set_size_request(WIDTH, -1)
+
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6, margin=10)
+        self.window.add(box)
+        wifi_on = nmcli("radio", "wifi").stdout.strip() == "enabled"
+        box.pack_start(self.toggle_row(wifi_on), False, False, 0)
+
+        self.picked = None
+        if wifi_on:
+            self.saved = saved_networks()
+            self.list = Gtk.ListBox(activate_on_single_click=True)
+            self.list.connect("row-activated", self.on_pick)
+            self.scroller = Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.NEVER)
+            self.scroller.add(self.list)
+            box.pack_start(Gtk.Separator(), False, False, 0)
+            box.pack_start(self.scroller, True, True, 0)
+            self.fill(networks())
+            box.pack_start(self.bottom_panel(), False, False, 0)
+            # Show what NetworkManager already knows straight away (a fresh scan takes ~5 s), then refresh the
+            # list when a new scan finishes.
+            threading.Thread(target=lambda: GLib.idle_add(self.refresh, networks("yes")), daemon=True).start()
+
+        self.window.connect("map-event", self.grab)
+        self.window.connect("button-press-event", self.on_press)
+        self.window.connect("key-press-event", lambda _w, e: e.keyval == Gdk.KEY_Escape and close())
+        self.window.connect("destroy", Gtk.main_quit)
+
+    def toggle_row(self, wifi_on):
+        button = Gtk.Button(relief=Gtk.ReliefStyle.NONE)
+        row = Gtk.Box(spacing=10)
+        row.pack_start(label(WIFI_OFF if wifi_on else WIFI_ON, "icon"), False, False, 0)
+        row.pack_start(label("Turn Wi-Fi off" if wifi_on else "Turn Wi-Fi on", xalign=0), True, True, 0)
+        button.add(row)
+        button.connect("clicked", lambda _b: (nmcli("radio", "wifi", "off" if wifi_on else "on"), close()))
+        return button
+
+    def fill(self, nets):
+        for row in self.list.get_children():
+            self.list.remove(row)
+        for net in nets:
+            row = Gtk.ListBoxRow()
+            row.net = net
+            line = Gtk.Box(spacing=10)
+            line.pack_start(label(SIGNAL[min(3, net["signal"] // 25)], "icon"), False, False, 0)
+            line.pack_start(label(net["ssid"], xalign=0, ellipsize=Pango.EllipsizeMode.END), True, True, 0)
+            if net["secured"]:
+                line.pack_start(label(LOCK, "icon", "dim"), False, False, 0)
+            row.add(line)
+            if net["connected"]:
+                row.get_style_context().add_class("connected")
+            self.list.add(row)
+        self.list.show_all()
+        # Fix the list's height (up to VISIBLE_ROWS rows, then it scrolls), so opening the bottom panel makes the
+        # menu taller instead of squeezing the list
+        rows = self.list.get_children()
+        if rows:
+            row_height = rows[0].get_preferred_height().natural_height + 2
+            self.scroller.set_min_content_height(min(len(rows), VISIBLE_ROWS) * row_height)
+
+    def refresh(self, nets):
+        """New scan results: rebuild the list, keeping the network you picked selected."""
+        if nets:
+            self.fill(nets)
+            for row in self.list.get_children():
+                if self.picked and row.net["ssid"] == self.picked["ssid"]:
+                    self.list.select_row(row)
+        return False
+
+    def bottom_panel(self):
+        """The part that opens at the bottom when you pick a network: a password box and/or a button."""
+        self.revealer = Gtk.Revealer(transition_type=Gtk.RevealerTransitionType.SLIDE_DOWN, transition_duration=150)
+        panel = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8, margin_top=6)
+        panel.pack_start(Gtk.Separator(), False, False, 0)
+        self.title = label("", xalign=0, ellipsize=Pango.EllipsizeMode.END)
+        self.password = Gtk.Entry(visibility=False, placeholder_text="Password")
+        self.password.connect("activate", self.on_connect)
+        self.button = Gtk.Button()
+        self.button.get_style_context().add_class("primary")
+        self.button.connect("clicked", self.on_connect)
+        self.status = label("", "error", xalign=0, wrap=True)
+        for widget in (self.title, self.password, self.button, self.status):
+            panel.pack_start(widget, False, False, 0)
+        self.revealer.add(panel)
+        return self.revealer
+
+    def on_pick(self, _list, row):
+        self.picked = net = row.net
+        self.status.set_text("")
+        self.button.set_sensitive(True)
+        if net["connected"]:
+            self.title.set_text(f"Connected to {net['ssid']}")
+            self.password.hide()
+            self.button.hide()
+        elif net["ssid"] in self.saved:
+            self.title.set_text(net["ssid"])
+            self.password.hide()
+            self.button.set_label("Switch")
+            self.button.show()
+        elif net["secured"]:
+            self.title.set_text(f"Password for {net['ssid']}")
+            self.password.set_text("")
+            self.password.show()
+            self.button.set_label("Connect")
+            self.button.show()
+            focus(self.password)
+        else:
+            self.title.set_text(f"{net['ssid']} (open network)")
+            self.password.hide()
+            self.button.set_label("Connect")
+            self.button.show()
+        self.revealer.set_reveal_child(True)
+        self.window.resize(WIDTH, 1)  # fit the menu to what's showing now (it never shrinks by itself)
+
+    def on_connect(self, _widget):
+        net = self.picked
+        if not net:
+            return
+        new_secured = net["ssid"] not in self.saved and net["secured"]
+        password = self.password.get_text()
+        if new_secured and not password:
+            self.status.set_text("Enter the password first")
+            return
+        self.status.set_text("Connecting…")
+        self.button.set_sensitive(False)
+        if net["ssid"] in self.saved:
+            args = ["connection", "up", "id", net["ssid"]]
+        elif new_secured:
+            args = ["device", "wifi", "connect", net["ssid"], "password", password]
+        else:
+            args = ["device", "wifi", "connect", net["ssid"]]
+        threading.Thread(target=lambda: GLib.idle_add(self.connected, net, nmcli("-w", "20", *args)), daemon=True).start()
+
+    def connected(self, net, result):
+        if result.returncode == 0:
+            subprocess.Popen(["notify-send", "-i", "network-wireless", f"Connected to {net['ssid']}"])
+            close()
+            return False
+        if net["ssid"] not in self.saved:
+            # A failed first try still saves a profile with the wrong password; remove it so the next try asks again
+            nmcli("connection", "delete", "id", net["ssid"])
+        error = (result.stderr.strip().splitlines() or ["Couldn't connect"])[-1]
+        self.status.set_text("Wrong password" if "Secrets were required" in error else error.removeprefix("Error: "))
+        self.button.set_sensitive(True)
+        return False
+
+    def grab(self, *_):
+        """Borrow the mouse and keyboard, so typing goes to the password box and clicks elsewhere close it."""
+        seat = Gdk.Display.get_default().get_default_seat()
+        if seat.grab(self.window.get_window(), Gdk.SeatCapabilities.ALL, True, None, None, None) != Gdk.GrabStatus.SUCCESS:
+            GLib.timeout_add(50, self.grab)  # the click on the bar may not have been released yet; try again shortly
+        return False
+
+    def on_press(self, _window, event):
+        """A click outside the menu closes it (clicks inside go to the menu)."""
+        x, y = self.window.get_position()
+        width, height = self.window.get_size()
+        if not (x <= event.x_root < x + width and y <= event.y_root < y + height):
+            close()
+
+    def show(self):
+        _screen, x, _y = Gdk.Display.get_default().get_default_seat().get_pointer().get_position()
+        screen_width = self.window.get_screen().get_width()
+        self.window.show_all()
+        self.window.move(max(8, min(x - WIDTH // 2, screen_width - WIDTH - 8)), BAR_HEIGHT + 6)
+
+
+def focus(widget):
+    """Give a widget keyboard focus. Pop-up windows never get focus from the window manager, so tell GTK directly."""
+    widget.grab_focus()
+    event = Gdk.Event.new(Gdk.EventType.FOCUS_CHANGE)
+    event.focus_change.window = widget.get_window()
+    event.focus_change.in_ = True
+    widget.send_focus_change(event)
+
+
+def close(*_):
+    with open(CLOSED_AT, "w") as f:
+        f.write(str(time.time()))
+    Gtk.main_quit()
+
+
+try:
+    if time.time() - float(open(CLOSED_AT).read()) < 0.4:
+        raise SystemExit
+except (OSError, ValueError):
+    pass
+
+# Already open? Then this click closes it.
+try:
+    pid = int(open(PID_FILE).read())
+    if "wifi-popup" in open(f"/proc/{pid}/cmdline").read():
+        os.kill(pid, signal.SIGTERM)
+        raise SystemExit
+except (OSError, ValueError):
+    pass
+with open(PID_FILE, "w") as f:
+    f.write(str(os.getpid()))
+
+style = Gtk.CssProvider()
+style.load_from_data(CSS)
+Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), style, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+WifiPopup().show()
+Gtk.main()

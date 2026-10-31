@@ -10,8 +10,8 @@ Each folder is a [GNU Stow](https://www.gnu.org/software/stow/) package. The fil
 | Folder | What's in it | Linked to |
 |---|---|---|
 | `polybar/` | Top bar config (no tray: Wi-Fi and volume are built-in modules), `launch.sh`, login autostart entries (polybar on, NVIDIA Prime tray icon off) | `~/.config/polybar`, `~/.config/autostart/polybar.desktop` |
-| `rofi/` | `window-grid.rasi` (grid, colours, size), used by the app menu, window switcher and drop-downs | `~/.config/rofi` |
-| `scripts/` | `rofi-menu` (Super+Tab app menu), `rofi-windows` (Alt+Tab window switcher), `rofi-wifi` (Wi-Fi drop-down, click the Wi-Fi icon on the bar), `polybar-workspaces` (workspace dots), `volume-popup` (drop-down volume slider, click the volume on the bar) | `~/.local/bin` |
+| `rofi/` | `window-grid.rasi` (grid, colours, size), used by the app menu and window switcher | `~/.config/rofi` |
+| `scripts/` | `rofi-menu` (Super+Tab app menu), `rofi-windows` (Alt+Tab window switcher), `wifi-popup` (Wi-Fi drop-down with password box / Switch button, click the Wi-Fi icon on the bar), `polybar-workspaces` (workspace dots), `volume-popup` (drop-down volume slider, click the volume on the bar) | `~/.local/bin` |
 | `bspwm/` | bspwm session only: `bspwmrc` (window manager, starts everything below), `sxhkdrc` (shortcuts, same as Cinnamon's), `picom.conf` (blur, rounded corners), `dunstrc` (notifications), `xsettingsd.conf` (theme for apps), and an autostart entry that keeps picom off in Cinnamon | `~/.config/{bspwm,sxhkd,picom,dunst,xsettingsd}`, `~/.config/autostart/picom.desktop` |
 | `cinnamon/` | Cinnamon settings export: theme, icons, shortcuts, workspaces, panel | loaded with `dconf` (below) |
 | `terminal/` | GNOME Terminal profiles (Gruvbox colours) | loaded with `dconf` (below) |
