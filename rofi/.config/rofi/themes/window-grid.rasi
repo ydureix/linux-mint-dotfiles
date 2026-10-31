@@ -1,9 +1,9 @@
-/* Window Grid: a centred, scrollable 4x3 grid of open windows in see-through Gruvbox dark soft colours. */
-@import "gruvbox-dark-soft"
+/* Window Grid: a centred, scrollable 4x3 grid of open windows in see-through Gruvbox dark hard colours. */
+@import "gruvbox-dark-hard"
 
 /* See-through Gruvbox colours. The last number is opacity: 0% is invisible, 100% is solid. */
 * {
-    background:                  rgba(50, 48, 47, 75%);     /* bg0 soft #32302f */
+    background:                  rgba(29, 32, 33, 75%);     /* bg0 hard #1d2021 */
     background-color:            transparent;
     normal-background:           transparent;
     alternate-normal-background: transparent;

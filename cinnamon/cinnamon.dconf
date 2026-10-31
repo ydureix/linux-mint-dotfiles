@@ -28,7 +28,7 @@ sources=[('xkb', 'us')]
 
 [desktop/interface]
 cursor-theme='Bibata-Modern-Classic'
-gtk-theme='Gruvbox-Orange-Dark-Soft'
+gtk-theme='Gruvbox-Orange-Dark'
 icon-theme='Gruvbox-Tan'
 
 [desktop/keybindings]
@@ -64,7 +64,7 @@ layout-group=0
 event-sounds=false
 
 [desktop/wm/preferences]
-theme='Gruvbox-Orange-Dark-Soft'
+theme='Gruvbox-Orange-Dark'
 
 [gestures]
 pinch-percent-threshold=uint32 40
@@ -92,4 +92,4 @@ night-light-last-coordinates=(34.052222, -118.242778)
 night-light-temperature=uint32 2700
 
 [theme]
-name='Gruvbox-Orange-Dark-Soft'
+name='Gruvbox-Orange-Dark'

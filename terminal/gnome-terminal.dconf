@@ -4,17 +4,17 @@ list=['6f59e838-c7bf-48ab-8620-1fd1d3a26985']
 
 [legacy/profiles:/:6f59e838-c7bf-48ab-8620-1fd1d3a26985]
 audible-bell=false
-background-color='#32302F'
+background-color='#1D2021'
 background-transparency-percent=19
 bold-is-bright=true
-cursor-background-color='#DDC7A1'
+cursor-background-color='#EBDBB2'
 cursor-colors-set=true
-cursor-foreground-color='#32302F'
+cursor-foreground-color='#1D2021'
 default-size-columns=105
 default-size-rows=30
-foreground-color='#DDC7A1'
-palette=['#32302F', '#EA6962', '#A9B665', '#D8A657', '#7DAEA3', '#D3869B', '#89B482', '#DDC7A1', '#7C6F64', '#EA6962', '#A9B665', '#D8A657', '#7DAEA3', '#D3869B', '#89B482', '#FBF1C7']
+foreground-color='#EBDBB2'
+palette=['#282828', '#CC241D', '#98971A', '#D79921', '#458588', '#B16286', '#689D6A', '#A89984', '#928374', '#FB4934', '#B8BB26', '#FABD2F', '#83A598', '#D3869B', '#8EC07C', '#EBDBB2']
 use-theme-colors=false
 use-theme-transparency=false
 use-transparent-background=true
-visible-name='Gruvbox Material Dark Soft'
+visible-name='Gruvbox Dark Hard'

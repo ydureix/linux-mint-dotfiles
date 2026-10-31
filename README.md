@@ -33,7 +33,8 @@ dconf load /org/gnome/terminal/ < terminal/gnome-terminal.dconf
 Themes are installed separately (they're large and come from their own projects):
 
 - GTK theme: [Gruvbox-GTK-Theme](https://github.com/Fausto-Korpsvart/Gruvbox-GTK-Theme), installed with
-  `themes/install.sh -t orange -c light` and `themes/install.sh -t orange -c dark --tweaks soft`
+  `themes/install.sh -t orange -c dark` (Gruvbox dark hard, the one in use; add `--tweaks soft` for the softer
+  variant, or use `-c light` for light)
 - Icons: that repo's `icons/Gruvbox_Dark` folder, copied to `~/.icons/Gruvbox-Tan`
   (then `gtk-update-icon-cache -f ~/.icons/Gruvbox-Tan`)
 - Cursor: Bibata-Modern-Classic comes with Mint (`mint-cursor-themes`)
