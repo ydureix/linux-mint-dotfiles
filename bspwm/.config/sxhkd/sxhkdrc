@@ -1,0 +1,56 @@
+# Keyboard shortcuts for the bspwm session. Reload with Super+Escape.
+# The first block matches what you had in Cinnamon; the rest are bspwm's window controls.
+
+# --- Same as Cinnamon ---
+
+# App menu / window switcher (hold Alt and tap Tab, let go to switch)
+super + Tab
+	~/.local/bin/rofi-menu
+alt + Tab
+	~/.local/bin/rofi-windows
+
+# Switch to workspace 1-4 / send the focused window there
+alt + {1-4}
+	bspc desktop -f '^{1-4}'
+super + shift + {1-4}
+	bspc node -d '^{1-4}'
+
+# Terminal, files, screenshot, close window
+ctrl + alt + t
+	gnome-terminal
+super + e
+	nemo
+Print
+	gnome-screenshot -i
+alt + F4
+	bspc node -c
+
+# Volume and media keys
+XF86AudioRaiseVolume
+	~/.local/bin/polybar-volume up
+XF86AudioLowerVolume
+	~/.local/bin/polybar-volume down
+XF86AudioMute
+	pactl set-sink-mute @DEFAULT_SINK@ toggle
+
+# --- bspwm window controls ---
+
+# Focus the window to the left/right/above/below; with Shift, swap places with it
+super + {Left,Right,Up,Down}
+	bspc node -f {west,east,north,south}
+super + shift + {Left,Right,Up,Down}
+	bspc node -s {west,east,north,south}
+
+# Toggle floating, fullscreen, and one-window-at-a-time (monocle) layout
+super + space
+	bspc node -t ~floating
+super + f
+	bspc node -t ~fullscreen
+super + m
+	bspc desktop -l next
+
+# Reload shortcuts / reload bspwm
+super + Escape
+	pkill -USR1 -x sxhkd
+super + alt + r
+	bspc wm -r

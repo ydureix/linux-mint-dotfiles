@@ -1,0 +1,44 @@
+#!/bin/sh
+# bspwm session: tiling windows with picom blur. Pick "bspwm" on the login screen (Cinnamon is still there too).
+# Keyboard shortcuts live in ~/.config/sxhkd/sxhkdrc. Reload this file with Super+Alt+R.
+
+# Things Cinnamon normally provides, started once (this file runs again on every reload).
+run() { pgrep -x "$1" >/dev/null || "$@" & }
+export XCURSOR_THEME=Bibata-Modern-Classic  # apps started from shortcuts inherit this
+run sxhkd
+run picom                                    # blur, rounded corners, fades: ~/.config/picom/picom.conf
+run dunst                                    # notification pop-ups: ~/.config/dunst/dunstrc
+run xsettingsd                               # GTK theme, icons, cursor, font: ~/.config/xsettingsd/xsettingsd.conf
+run nm-applet                                # answers Wi-Fi password prompts (no tray icon)
+run blueman-applet                           # answers Bluetooth pairing prompts (no tray icon)
+pgrep -f polkit-gnome-authentication-agent-1 >/dev/null ||
+    /usr/lib/policykit-1-gnome/polkit-gnome-authentication-agent-1 &  # password box when an app asks for admin rights
+xsetroot -cursor_name left_ptr
+
+# Same wallpaper as Cinnamon (Cinnamon's setting stores it as a file:// address, so turn that into a path)
+uri=$(gsettings get org.cinnamon.desktop.background picture-uri)
+feh --no-fehbg --bg-fill "$(python3 -c 'import sys, urllib.parse; print(urllib.parse.unquote(urllib.parse.urlparse(sys.argv[1].strip("\x27")).path))' "$uri")"
+
+# 4 workspaces, like Cinnamon. Polybar's dots and Alt+1..4 follow them.
+bspc monitor -d 1 2 3 4
+
+# Look: Gruvbox, green border on the focused window like the bar's outline
+bspc config border_width         2
+bspc config window_gap           10
+bspc config focused_border_color '#87bd89'
+bspc config active_border_color  '#3c3836'
+bspc config normal_border_color  '#3c3836'
+bspc config split_ratio          0.5
+bspc config borderless_monocle   true
+bspc config gapless_monocle      true
+bspc config pointer_modifier     mod4    # hold Super and drag to move/resize floating windows
+
+# Small windows float instead of tiling
+bspc rule -r '*'
+bspc rule -a Volume-popup state=floating
+bspc rule -a Pavucontrol state=floating
+bspc rule -a Nm-connection-editor state=floating
+bspc rule -a Blueman-manager state=floating
+bspc rule -a Gnome-calculator state=floating
+
+~/.config/polybar/launch.sh

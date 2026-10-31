@@ -1,6 +1,8 @@
 # dotfiles
 
-My Linux Mint (Cinnamon) setup: Gruvbox theme, polybar top bar, rofi menus.
+My Linux Mint setup: Gruvbox theme, polybar top bar, rofi menus. Two sessions to pick from on the login screen:
+**Cinnamon**, and **bspwm** (tiling windows, with picom blurring the menus and terminal). The bar, menus and
+scripts are shared by both.
 
 Each folder is a [GNU Stow](https://www.gnu.org/software/stow/) package. The files live here, and links in
 `~/.config` and `~/.local/bin` point back to them, so editing a file here changes the live setup.
@@ -8,8 +10,9 @@ Each folder is a [GNU Stow](https://www.gnu.org/software/stow/) package. The fil
 | Folder | What's in it | Linked to |
 |---|---|---|
 | `polybar/` | Top bar config (no tray: Wi-Fi and volume are built-in modules), `launch.sh`, login autostart entries (polybar on, NVIDIA Prime tray icon off) | `~/.config/polybar`, `~/.config/autostart/polybar.desktop` |
-| `rofi/` | `window-grid.rasi` (grid, colours, size) and `rofi-menu.rasi` (power buttons) | `~/.config/rofi` |
-| `scripts/` | `rofi-menu` (Super+Tab app menu with Log out / Sleep / Power off), `rofi-windows` (Alt+Tab window switcher), `rofi-wifi` (Wi-Fi drop-down, click the Wi-Fi icon on the bar), `polybar-workspaces` (workspace dots), `volume-popup` (drop-down volume slider, click the volume on the bar) | `~/.local/bin` |
+| `rofi/` | `window-grid.rasi` (grid, colours, size), used by the app menu, window switcher and drop-downs | `~/.config/rofi` |
+| `scripts/` | `rofi-menu` (Super+Tab app menu), `rofi-windows` (Alt+Tab window switcher), `rofi-wifi` (Wi-Fi drop-down, click the Wi-Fi icon on the bar), `polybar-workspaces` (workspace dots), `volume-popup` (drop-down volume slider, click the volume on the bar) | `~/.local/bin` |
+| `bspwm/` | bspwm session only: `bspwmrc` (window manager, starts everything below), `sxhkdrc` (shortcuts, same as Cinnamon's), `picom.conf` (blur, rounded corners), `dunstrc` (notifications), `xsettingsd.conf` (theme for apps), and an autostart entry that keeps picom off in Cinnamon | `~/.config/{bspwm,sxhkd,picom,dunst,xsettingsd}`, `~/.config/autostart/picom.desktop` |
 | `cinnamon/` | Cinnamon settings export: theme, icons, shortcuts, workspaces, panel | loaded with `dconf` (below) |
 | `terminal/` | GNOME Terminal profiles (Gruvbox colours) | loaded with `dconf` (below) |
 
@@ -22,10 +25,10 @@ Each folder is a [GNU Stow](https://www.gnu.org/software/stow/) package. The fil
 ## Restoring on a fresh install
 
 ```bash
-sudo apt install git stow polybar rofi pavucontrol
+sudo apt install git stow polybar rofi pavucontrol bspwm sxhkd picom dunst feh xsettingsd
 git clone <your repo url> ~/dotfiles
 cd ~/dotfiles
-stow polybar rofi scripts
+stow polybar rofi scripts bspwm
 dconf load /org/cinnamon/ < cinnamon/cinnamon.dconf
 dconf load /org/gnome/terminal/ < terminal/gnome-terminal.dconf
 ```

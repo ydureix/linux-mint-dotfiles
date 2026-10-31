@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=picom
+Comment=Turned off at login: picom clashes with Cinnamon's own compositor. bspwmrc starts it in the bspwm session.
+Exec=picom
+Hidden=true

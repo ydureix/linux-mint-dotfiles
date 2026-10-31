@@ -27,7 +27,9 @@ window {
     padding:          14px;
 }
 
+/* Just the search box: no "Apps:" / "window:" prompt in front of it. */
 inputbar {
+    children:         [ entry ];
     padding:          8px 10px;
     border-radius:    8px;
     background-color: rgba(60, 56, 54, 60%);                /* bg1 #3c3836 */
