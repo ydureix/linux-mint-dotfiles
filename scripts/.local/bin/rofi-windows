@@ -1,10 +1,101 @@
-#!/bin/sh
+#!/usr/bin/python3
 # Alt+Tab window switcher in the Window Grid look (~/.config/rofi/themes/window-grid.rasi).
 # Hold Alt and tap Tab to move forward (Shift+Tab goes back); let go of Alt to switch.
 # A quick Alt+Tab tap jumps to the previous window. Esc cancels; click a window to pick it.
-exec rofi -show window -show-icons -icon-theme Gruvbox-Tan -theme window-grid \
-    -window-format '{t}' -selected-row 1 \
-    -kb-row-down 'Alt+Tab,Down' \
-    -kb-row-up 'Alt+ISO_Left_Tab,Alt+Shift+Tab,Up' \
-    -kb-accept-entry '!Alt_L,!Alt_R,Return,KP_Enter' \
-    -kb-cancel 'Escape,Alt+Escape'
+# Built on rofi -dmenu so Enter (or letting go of Alt) does nothing when no window matches.
+import subprocess
+
+import gi
+from Xlib import X, Xutil, display, error
+
+gi.require_version("Gio", "2.0")
+from gi.repository import Gio
+
+ROFI = ["rofi", "-icon-theme", "Gruvbox-Tan"]
+
+d = display.Display()
+root = d.screen().root
+
+
+def prop(win, name):
+    p = win.get_full_property(d.intern_atom(name), X.AnyPropertyType)
+    return p.value if p else []
+
+
+def title(win):
+    name = prop(win, "_NET_WM_NAME") or win.get_wm_name() or ""
+    if isinstance(name, bytes):
+        name = name.decode("utf-8", "replace")
+    return " ".join(name.split())  # one line: rofi rows can't hold newlines
+
+
+def app_icons():
+    """WM_CLASS / .desktop id (lowercase) -> icon name, the way the app menu shows it."""
+    icons = {}
+    for app in Gio.AppInfo.get_all():
+        icon = app.get_icon()
+        if not isinstance(icon, Gio.ThemedIcon):
+            continue
+        name = icon.get_names()[0]
+        icons.setdefault(app.get_id().removesuffix(".desktop").lower(), name)
+        if app.get_startup_wm_class():
+            icons[app.get_startup_wm_class().lower()] = name
+    return icons
+
+
+def icon_name(wm_class, icons):
+    for name in (wm_class or ())[::-1]:  # class first, then instance
+        if name.lower() in icons:
+            return icons[name.lower()]
+    return wm_class[1].lower() if wm_class else "application-x-executable"
+
+
+def list_windows():
+    """Same windows and order as rofi -show window: taskbar windows, most recently used first."""
+    hidden_types = {d.intern_atom(a) for a in ("_NET_WM_WINDOW_TYPE_DOCK", "_NET_WM_WINDOW_TYPE_DESKTOP")}
+    hidden_states = {d.intern_atom(a) for a in ("_NET_WM_STATE_SKIP_TASKBAR", "_NET_WM_STATE_SKIP_PAGER")}
+    attention = d.intern_atom("_NET_WM_STATE_DEMANDS_ATTENTION")
+    windows = []
+    for wid in reversed(prop(root, "_NET_CLIENT_LIST_STACKING")):
+        win = d.create_resource_object("window", wid)
+        try:
+            states = set(prop(win, "_NET_WM_STATE"))
+            if (win.get_attributes().override_redirect
+                    or hidden_types & set(prop(win, "_NET_WM_WINDOW_TYPE"))
+                    or hidden_states & states):
+                continue
+            hints = win.get_wm_hints()
+            urgent = attention in states or bool(hints and hints.flags & Xutil.UrgencyHint)
+            windows.append((wid, title(win), win.get_wm_class(), urgent))
+        except error.BadWindow:  # closed while we were looking
+            continue
+    return windows
+
+
+windows = list_windows()
+if not windows:
+    raise SystemExit
+
+icons = app_icons()
+active = prop(root, "_NET_ACTIVE_WINDOW")
+rows = "".join(f"{t}\0icon\x1f{icon_name(c, icons)}\n" for _, t, c, _ in windows)
+marks = []
+if active and active[0] in [w[0] for w in windows]:
+    marks += ["-a", str([w[0] for w in windows].index(active[0]))]
+if any(w[3] for w in windows):
+    marks += ["-u", ",".join(str(i) for i, w in enumerate(windows) if w[3])]
+
+result = subprocess.run(
+    ROFI + ["-dmenu", "-i", "-p", "window", "-show-icons", "-no-custom", "-format", "i",
+            "-theme", "window-grid", "-selected-row", str(min(1, len(windows) - 1)), *marks,
+            "-kb-element-next", "Alt+Tab,Tab",
+            "-kb-element-prev", "Alt+ISO_Left_Tab,Alt+Shift+Tab,ISO_Left_Tab",
+            "-kb-accept-entry", "!Alt_L,!Alt_R,Return,KP_Enter",
+            "-kb-cancel", "Escape,Alt+Escape"],
+    input=rows, capture_output=True, text=True)
+
+# rofi exit codes: 0 = window picked, 1 = cancelled (Esc), anything else = rofi failed
+if result.returncode == 0 and result.stdout.strip().isdigit():
+    subprocess.run(["wmctrl", "-i", "-a", hex(windows[int(result.stdout)][0])])
+elif result.returncode > 1:
+    subprocess.run(["notify-send", "Alt+Tab switcher failed", result.stderr.strip() or f"rofi exit code {result.returncode}"])
