@@ -2,6 +2,14 @@
 # bspwm session: tiling windows with picom blur. Pick "bspwm" on the login screen (Cinnamon is still there too).
 # Keyboard shortcuts live in ~/.config/sxhkd/sxhkdrc. Reload this file with Super+Alt+R.
 
+# Monitor at its highest refresh rate (164.92 Hz). The port name (DP-0, DP-2…) can change between boots,
+# so set it on the first connected output. Cinnamon keeps its own setting in System Settings → Display.
+xrandr --output "$(xrandr | awk '/ connected/{print $1; exit}')" --mode 1920x1080 --rate 164.92
+
+# NVIDIA settings saved in the NVIDIA app (digital vibrance etc., in ~/.nvidia-settings-rc). Cinnamon loads these
+# at login by itself; bspwm doesn't, so load them here, after the refresh rate change.
+nvidia-settings --load-config-only
+
 # Things Cinnamon normally provides, started once (this file runs again on every reload).
 run() { pgrep -x "$1" >/dev/null || "$@" & }
 export XCURSOR_THEME=Bibata-Modern-Classic  # apps started from shortcuts inherit this

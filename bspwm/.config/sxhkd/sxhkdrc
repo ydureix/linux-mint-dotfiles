@@ -15,14 +15,14 @@ alt + {1-4}
 super + shift + {1-4}
 	bspc node -d '^{1-4}'
 
-# Terminal, files, screenshot, close window
+# Terminal, files, screenshot, close window (Alt+F4 or Alt+Q)
 ctrl + alt + t
 	gnome-terminal
 super + e
 	nemo
 Print
 	gnome-screenshot -i
-alt + F4
+alt + {F4,q}
 	bspc node -c
 
 # Volume and media keys
