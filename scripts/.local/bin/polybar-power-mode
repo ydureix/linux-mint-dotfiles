@@ -1,0 +1,30 @@
+#!/usr/bin/python3
+# Power mode icon for polybar (module/powermode): speedometer = performance, scales = balanced, leaf = power saver.
+# Prints the icon and updates it whenever the mode changes (from the drop-down, GameMode, or anywhere else).
+# Click it for the drop-down of all modes: ~/.local/bin/power-mode-popup
+import re
+import subprocess
+
+ICONS = {"performance": "\U000F04C5", "balanced": "\U000F05D1", "power-saver": "\U000F032A"}  # Symbols Nerd Font
+OTHER = "\U000F0241"  # lightning bolt, for any mode not listed above
+
+
+def current_mode():
+    match = re.search(r"^\* (\S+):$", subprocess.run(["powerprofilesctl", "list"], capture_output=True, text=True).stdout, re.M)
+    return match.group(1) if match else ""
+
+
+def draw(last=[None]):
+    line = f"%{{T4}}{ICONS.get(current_mode(), OTHER)}%{{T-}}"
+    if line != last[0]:
+        print(line, flush=True)
+        last[0] = line
+
+
+draw()
+# power-profiles-daemon announces every mode change on the system bus
+watcher = subprocess.Popen(["gdbus", "monitor", "--system", "--dest", "org.freedesktop.UPower.PowerProfiles"],
+                           stdout=subprocess.PIPE, text=True)
+for line in watcher.stdout:
+    if "ActiveProfile" in line:
+        draw()

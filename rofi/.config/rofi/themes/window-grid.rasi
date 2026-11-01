@@ -27,7 +27,7 @@ window {
     background-color: @background;
     border:           2px;
     border-color:     rgba(216, 166, 87, 80%);              /* tan #d8a657 */
-    border-radius:    12px;
+    border-radius:    10px;
     padding:          14px;
 }
 

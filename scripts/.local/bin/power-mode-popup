@@ -1,0 +1,141 @@
+#!/usr/bin/python3
+# Power mode drop-down, opened by clicking the power mode icon on polybar. Lists every mode this system offers
+# (from power-profiles-daemon) with the current one highlighted; click one to switch.
+# Same look as the Wi-Fi drop-down (~/.local/bin/wifi-popup), and it doesn't take focus from your window.
+# Click outside or press Esc to close; clicking the icon again also closes it.
+import os
+import re
+import signal
+import subprocess
+import time
+
+import gi
+
+gi.require_version("Gtk", "3.0")
+gi.require_version("Gdk", "3.0")
+from gi.repository import Gdk, GLib, Gtk
+
+BAR_HEIGHT = 34  # polybar's height including its border; the drop-down opens just below it
+WIDTH = 220      # px
+ICONS = {"performance": "\U000F04C5", "balanced": "\U000F05D1", "power-saver": "\U000F032A"}  # Symbols Nerd Font
+OTHER = "\U000F0241"
+NAMES = {"performance": "Performance", "balanced": "Balanced", "power-saver": "Power saver"}
+CSS = b"""
+#power-popup { background-color: #1d2021; border: 2px solid #87bd89; border-radius: 10px; }
+#power-popup label { font-family: "DejaVu Sans"; font-size: 10pt; color: #d5c4a1; }
+#power-popup label.icon { font-family: "Symbols Nerd Font"; font-size: 12pt; }
+#power-popup list { background-color: transparent; }
+#power-popup row { background-color: transparent; padding: 6px 8px; border-radius: 8px; }
+#power-popup row:hover, #power-popup row:selected { background-color: rgba(102, 92, 84, 0.65); }
+#power-popup row.current { background-color: rgba(215, 153, 33, 0.35); }
+"""
+RUNTIME = os.environ.get("XDG_RUNTIME_DIR", "/tmp")
+# Clicking the bar while this is open closes it; remembering when it closed stops that same click reopening it.
+CLOSED_AT = os.path.join(RUNTIME, "power-mode-popup.closed")
+PID_FILE = os.path.join(RUNTIME, "power-mode-popup.pid")
+
+
+def modes():
+    """[(mode, is_current)] in the order powerprofilesctl lists them."""
+    out = subprocess.run(["powerprofilesctl", "list"], capture_output=True, text=True).stdout
+    return [(name, mark == "*") for mark, name in re.findall(r"^([* ]) (\S+):$", out, re.M)]
+
+
+def close(*_):
+    with open(CLOSED_AT, "w") as f:
+        f.write(str(time.time()))
+    Gtk.main_quit()
+
+
+def pick(_list, row):
+    subprocess.run(["powerprofilesctl", "set", row.mode])
+    close()
+
+
+def grab(*_):
+    """Borrow the mouse and keyboard, so clicks elsewhere and Esc close the menu."""
+    seat = Gdk.Display.get_default().get_default_seat()
+    if seat.grab(popup.get_window(), Gdk.SeatCapabilities.ALL, True, None, None, None) != Gdk.GrabStatus.SUCCESS:
+        GLib.timeout_add(50, grab)  # the click on the bar may not have been released yet; try again shortly
+    else:
+        start_on_current()  # only now: GTK sets its own default focus when the window appears
+    return False
+
+
+def start_on_current():
+    """Select the current mode and give it keyboard focus, so the arrow keys move from there."""
+    if current_row:
+        listbox.select_row(current_row)
+        current_row.grab_focus()
+        event = Gdk.Event.new(Gdk.EventType.FOCUS_CHANGE)  # pop-up windows never get focus from the window
+        event.focus_change.window = current_row.get_window()  # manager, so tell GTK directly
+        event.focus_change.in_ = True
+        current_row.send_focus_change(event)
+
+
+def on_press(_window, event):
+    """A click outside the menu closes it (clicks inside go to the menu)."""
+    x, y = popup.get_position()
+    width, height = popup.get_size()
+    if not (x <= event.x_root < x + width and y <= event.y_root < y + height):
+        close()
+
+
+try:
+    if time.time() - float(open(CLOSED_AT).read()) < 0.4:
+        raise SystemExit
+except (OSError, ValueError):
+    pass
+
+# Already open? Then this click closes it.
+try:
+    pid = int(open(PID_FILE).read())
+    if "power-mode-popup" in open(f"/proc/{pid}/cmdline").read():
+        os.kill(pid, signal.SIGTERM)
+        raise SystemExit
+except (OSError, ValueError):
+    pass
+with open(PID_FILE, "w") as f:
+    f.write(str(os.getpid()))
+
+style = Gtk.CssProvider()
+style.load_from_data(CSS)
+Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), style, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+
+# A pop-up window like rofi's: the window manager doesn't manage it, so it doesn't move focus.
+popup = Gtk.Window(type=Gtk.WindowType.POPUP, name="power-popup")
+popup.set_type_hint(Gdk.WindowTypeHint.DROPDOWN_MENU)
+popup.add_events(Gdk.EventMask.BUTTON_PRESS_MASK)
+visual = popup.get_screen().get_rgba_visual()
+if visual:  # see-through corners, so the rounded border shows
+    popup.set_visual(visual)
+popup.set_size_request(WIDTH, -1)
+
+listbox = Gtk.ListBox(activate_on_single_click=True, margin=8)
+listbox.connect("row-activated", pick)
+current_row = None
+for mode, current in modes():
+    row = Gtk.ListBoxRow()
+    row.mode = mode
+    line = Gtk.Box(spacing=10)
+    icon = Gtk.Label(label=ICONS.get(mode, OTHER))
+    icon.get_style_context().add_class("icon")
+    line.pack_start(icon, False, False, 0)
+    line.pack_start(Gtk.Label(label=NAMES.get(mode, mode.replace("-", " ").capitalize()), xalign=0), True, True, 0)
+    row.add(line)
+    if current:
+        row.get_style_context().add_class("current")
+        current_row = row
+    listbox.add(row)
+popup.add(listbox)
+
+popup.connect("map-event", grab)
+popup.connect("button-press-event", on_press)
+popup.connect("key-press-event", lambda _w, e: e.keyval == Gdk.KEY_Escape and close())
+popup.connect("destroy", Gtk.main_quit)
+
+# Centre it under the mouse, just below the bar
+_screen, x, _y = Gdk.Display.get_default().get_default_seat().get_pointer().get_position()
+popup.show_all()
+popup.move(max(8, min(x - WIDTH // 2, popup.get_screen().get_width() - WIDTH - 8)), BAR_HEIGHT + 6)
+Gtk.main()

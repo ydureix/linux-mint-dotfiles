@@ -155,13 +155,23 @@ class WifiPopup:
             self.scroller.set_min_content_height(min(len(rows), VISIBLE_ROWS) * row_height)
 
     def refresh(self, nets):
-        """New scan results: rebuild the list, keeping the network you picked selected."""
+        """New scan results: rebuild the list, keeping the same network selected."""
         if nets:
             self.fill(nets)
-            for row in self.list.get_children():
-                if self.picked and row.net["ssid"] == self.picked["ssid"]:
-                    self.list.select_row(row)
+            # Once you've picked a network, leave keyboard focus where it is (e.g. in the password box)
+            self.select(self.picked["ssid"] if self.picked else None, take_focus=not self.picked)
         return False
+
+    def select(self, ssid=None, take_focus=True):
+        """Select the row for ssid, or else the network you're connected to (or the first row)."""
+        rows = self.list.get_children()
+        row = (next((r for r in rows if r.net["ssid"] == ssid), None)
+               or next((r for r in rows if r.net["connected"]), None)
+               or (rows[0] if rows else None))
+        if row:
+            self.list.select_row(row)
+            if take_focus:
+                focus(row)
 
     def bottom_panel(self):
         """The part that opens at the bottom when you pick a network: a password box and/or a button."""
@@ -245,6 +255,8 @@ class WifiPopup:
         seat = Gdk.Display.get_default().get_default_seat()
         if seat.grab(self.window.get_window(), Gdk.SeatCapabilities.ALL, True, None, None, None) != Gdk.GrabStatus.SUCCESS:
             GLib.timeout_add(50, self.grab)  # the click on the bar may not have been released yet; try again shortly
+        elif hasattr(self, "list") and not self.picked:
+            self.select()  # start on the connected network; only now, as GTK sets its own focus when the window appears
         return False
 
     def on_press(self, _window, event):
