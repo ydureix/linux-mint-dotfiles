@@ -17,7 +17,7 @@ window-effect-speed=1
 quit-time-delay=60
 
 [desktop/background]
-picture-uri='file:///home/rudolph/Pictures/wallhaven-gj9ggq.jpg'
+picture-uri='file:///home/rudolph/Pictures/wallhaven-2e2xyx.jpg'
 
 [desktop/background/slideshow]
 delay=15
@@ -28,6 +28,7 @@ sources=[('xkb', 'us')]
 
 [desktop/interface]
 cursor-theme='Bibata-Modern-Classic'
+font-name='Inter 10'
 gtk-theme='Gruvbox-Orange-Dark'
 icon-theme='Gruvbox-Tan'
 
@@ -65,6 +66,7 @@ event-sounds=false
 
 [desktop/wm/preferences]
 theme='Gruvbox-Orange-Dark'
+titlebar-font='Inter Medium 10'
 
 [gestures]
 pinch-percent-threshold=uint32 40
