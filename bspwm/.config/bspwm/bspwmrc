@@ -14,7 +14,9 @@ nvidia-settings --load-config-only
 run() { pgrep -x "$1" >/dev/null || "$@" & }
 export XCURSOR_THEME=Bibata-Modern-Classic  # apps started from shortcuts inherit this
 run sxhkd
-run picom                                    # blur, rounded corners, fades: ~/.config/picom/picom.conf
+# picom (blur, transparency, rounded corners, fades: ~/.config/picom/picom.conf) is started and stopped by
+# picom-fullscreen: off while a fullscreen window (a game) is showing, on otherwise.
+pgrep -f "bspwm/picom-fullscreen" >/dev/null || ~/.config/bspwm/picom-fullscreen &
 run dunst                                    # notification pop-ups: ~/.config/dunst/dunstrc
 run xsettingsd                               # GTK theme, icons, cursor, font: ~/.config/xsettingsd/xsettingsd.conf
 run nm-applet                                # answers Wi-Fi password prompts (no tray icon)
@@ -27,8 +29,8 @@ xsetroot -cursor_name left_ptr
 uri=$(gsettings get org.cinnamon.desktop.background picture-uri)
 feh --no-fehbg --bg-fill "$(python3 -c 'import sys, urllib.parse; print(urllib.parse.unquote(urllib.parse.urlparse(sys.argv[1].strip("\x27")).path))' "$uri")"
 
-# 4 workspaces, like Cinnamon. Polybar's dots and Alt+1..4 follow them.
-bspc monitor -d 1 2 3 4
+# 10 workspaces, like Cinnamon. Polybar's dots and Alt+1..9, Alt+0 follow them.
+bspc monitor -d 1 2 3 4 5 6 7 8 9 10
 
 # Look: Gruvbox, green border on the focused window like the bar's outline
 bspc config border_width         2

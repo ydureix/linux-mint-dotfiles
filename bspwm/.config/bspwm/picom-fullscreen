@@ -1,0 +1,19 @@
+#!/bin/sh
+# Stops picom while the workspace you're on has a fullscreen window (games, fullscreen video) and starts it again
+# when you leave fullscreen or switch to another workspace. Nothing picom draws (blur, transparency, rounded
+# corners) is visible over a fullscreen window, and switching it on and off mid-game can flash the screen black.
+# Started by bspwmrc.
+
+update() {
+    if [ -n "$(bspc query -N -n '.local.fullscreen.window.!hidden' 2>/dev/null)" ]; then
+        pkill -x picom
+    elif ! pgrep -x picom >/dev/null; then
+        setsid picom >/dev/null 2>&1 < /dev/null &
+    fi
+}
+
+update
+# Re-check whenever something that could change "is a fullscreen window showing?" happens
+bspc subscribe node_state node_add node_remove node_transfer node_flag desktop_focus | while read -r _; do
+    update
+done

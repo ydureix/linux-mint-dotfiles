@@ -9,11 +9,11 @@ super + Tab
 alt + Tab
 	~/.local/bin/rofi-windows
 
-# Switch to workspace 1-4 / send the focused window there
-alt + {1-4}
-	bspc desktop -f '^{1-4}'
-super + shift + {1-4}
-	bspc node -d '^{1-4}'
+# Switch to workspace 1-10 / send the focused window there (0 is workspace 10)
+alt + {1-9,0}
+	bspc desktop -f '^{1-9,10}'
+super + shift + {1-9,0}
+	bspc node -d '^{1-9,10}'
 
 # Terminal, files, screenshot, close window (Alt+F4 or Alt+Q)
 ctrl + alt + t
