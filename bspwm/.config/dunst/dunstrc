@@ -1,6 +1,6 @@
 # Notification pop-ups for the bspwm session (Cinnamon shows its own). Gruvbox dark hard, like the bar.
 [global]
-    font = Inter 10
+    font = DejaVu Sans 10
     origin = top-right
     offset = 12x46
     width = 320

@@ -28,7 +28,7 @@ sources=[('xkb', 'us')]
 
 [desktop/interface]
 cursor-theme='Bibata-Modern-Classic'
-font-name='Inter 10'
+font-name='DejaVu Sans 10'
 gtk-theme='Gruvbox-Orange-Dark'
 icon-theme='Gruvbox-Tan'
 
@@ -66,7 +66,7 @@ event-sounds=false
 
 [desktop/wm/preferences]
 theme='Gruvbox-Orange-Dark'
-titlebar-font='Inter Medium 10'
+titlebar-font='DejaVu Sans Bold 10'
 
 [gestures]
 pinch-percent-threshold=uint32 40

@@ -44,7 +44,4 @@ Themes are installed separately (they're large and come from their own projects)
 - Bar icons (Wi-Fi, volume): Symbols Nerd Font from [Nerd Fonts](https://github.com/ryanoasis/nerd-fonts/releases)
   (`NerdFontsSymbolsOnly.tar.xz`), with `SymbolsNerdFont-Regular.ttf` copied to `~/.local/share/fonts`
   (then `fc-cache -f`)
-- Fonts: [Inter](https://github.com/rsms/inter/releases) (interface) and
-  [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono/releases) (terminal, code). From each release zip,
-  copy `extras/ttf/Inter-*.ttf` to `~/.local/share/fonts/Inter` and `fonts/ttf/JetBrainsMono-*.ttf` to
-  `~/.local/share/fonts/JetBrainsMono` (then `fc-cache -f`). Or `sudo apt install fonts-inter fonts-jetbrains-mono`.
+- Fonts: DejaVu Sans (interface) and DejaVu Sans Mono (terminal, code) come with Mint

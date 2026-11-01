@@ -2,7 +2,7 @@
 @import "gruvbox-dark-hard"
 
 configuration {
-    font: "Inter 10";
+    font: "DejaVu Sans 10";
 }
 
 /* See-through Gruvbox colours. The last number is opacity: 0% is invisible, 100% is solid. */

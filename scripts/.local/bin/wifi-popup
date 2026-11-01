@@ -25,7 +25,7 @@ SIGNAL = ["\U000F091F", "\U000F0922", "\U000F0925", "\U000F0928"]  # weak .. str
 WIFI_ON, WIFI_OFF, LOCK = "\U000F05A9", "\U000F05AA", "\U000F033E"
 CSS = b"""
 #wifi-popup { background-color: #1d2021; border: 2px solid #87bd89; border-radius: 10px; }
-#wifi-popup label { font-family: Inter; font-size: 11pt; color: #d5c4a1; }
+#wifi-popup label { font-family: "DejaVu Sans"; font-size: 11pt; color: #d5c4a1; }
 #wifi-popup label.icon { font-family: "Symbols Nerd Font"; }
 #wifi-popup label.dim { color: #a89984; }
 #wifi-popup label.error { color: #fb4934; }
@@ -35,7 +35,7 @@ CSS = b"""
 #wifi-popup row.connected { background-color: rgba(215, 153, 33, 0.35); }
 #wifi-popup entry { background-color: #3c3836; color: #d5c4a1; caret-color: #d5c4a1; border: none;
                     border-radius: 6px; padding: 2px 8px; min-height: 22px; box-shadow: none;
-                    font-family: Inter; font-size: 10pt; }
+                    font-family: "DejaVu Sans"; font-size: 10pt; }
 #wifi-popup button { background-image: none; background-color: #3c3836; border: none; border-radius: 6px;
                      padding: 6px 12px; box-shadow: none; }
 #wifi-popup button:hover { background-color: #504945; }
