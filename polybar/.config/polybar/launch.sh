@@ -8,3 +8,6 @@ pkill -x polybar
 pgrep -x bspwm >/dev/null && export POLYBAR_WM_RESTACK=bspwm
 while pgrep -x polybar >/dev/null; do sleep 0.2; done
 polybar main >"$HOME/.cache/polybar.log" 2>&1 &
+# Show the bar only on workspaces with no windows (slides away when one opens)
+pkill -f "^/usr/bin/python3 .*/polybar-[a]utohide"
+~/.local/bin/polybar-autohide &

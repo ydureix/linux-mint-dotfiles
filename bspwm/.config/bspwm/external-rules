@@ -1,0 +1,18 @@
+#!/bin/sh
+# Opens each new window on its own workspace: if the workspace you're on already has a window, the new one goes
+# to the next empty workspace (1-10, wrapping round) and you follow it there. If yours is empty, it stays.
+# Dialogs, floating tools (the floating rules in bspwmrc) and docks like polybar stay where they open.
+# If all 10 workspaces are taken, it opens on the current one. bspwm runs this for every new window (set in bspwmrc)
+# with: window id, class, instance, and what bspwm already decided ("state=floating" and so on).
+
+consequences=$4
+
+case " $consequences " in
+    *" state=floating "* | *" manage=off "* | *" desktop="* | *" node="*) exit 0 ;;
+esac
+
+# The workspace you're on is empty: open here
+bspc query -D -d 'focused.occupied' >/dev/null 2>&1 || exit 0
+
+empty=$(bspc query -D -d 'next.!occupied' 2>/dev/null) || exit 0
+echo "desktop=$empty follow=on"

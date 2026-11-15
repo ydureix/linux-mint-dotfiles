@@ -1,0 +1,112 @@
+#!/usr/bin/python3
+# Shows the top bar only on a workspace with no windows. It slides down when you switch to an empty workspace or
+# close the last window there, and slides up out of sight when a window opens or you switch to a workspace that has
+# windows. Minimised windows don't count. If one of its drop-downs (Wi-Fi, volume, power mode) is open, the bar
+# waits for it to close before sliding away.
+# In bspwm, windows move with the bar: a window opening on an empty workspace grows up to the top as the bar slides
+# away. (In Cinnamon the bar just slides.)
+# Started by ~/.config/polybar/launch.sh; the bar itself is override-redirect (config.ini) so it reserves no space.
+import os
+import subprocess
+import time
+
+from Xlib import X, display
+
+BAR_HEIGHT = 34                  # polybar's height including its border (config.ini)
+POLL = 0.1                       # seconds between checks for windows opening, closing or switching workspace
+SLIDE_SECONDS, SLIDE_FRAMES = 0.15, 10  # how long the slide takes, and in how many steps
+RUNTIME = os.environ.get("XDG_RUNTIME_DIR", "/tmp")
+POPUPS = ("wifi-popup", "volume-popup", "power-mode-popup")
+BSPWM = os.environ.get("POLYBAR_WM_RESTACK") == "bspwm"  # set by launch.sh when bspwm is running
+
+d = display.Display()
+root = d.screen().root
+atom = d.intern_atom
+HIDDEN, STATE = atom("_NET_WM_STATE_HIDDEN"), atom("_NET_WM_STATE")
+CLIENTS, CURRENT, ON_DESKTOP = atom("_NET_CLIENT_LIST"), atom("_NET_CURRENT_DESKTOP"), atom("_NET_WM_DESKTOP")
+TYPE = atom("_NET_WM_WINDOW_TYPE")
+NOT_WINDOWS = {atom("_NET_WM_WINDOW_TYPE_DOCK"), atom("_NET_WM_WINDOW_TYPE_DESKTOP")}  # panels, desktop icons
+
+
+def polybar_window():
+    """The bar's window (looked up each time, since polybar gets a new one whenever it restarts)."""
+    for window in root.query_tree().children:
+        try:
+            if window.get_wm_class() == ("polybar", "Polybar"):
+                return window
+        except Exception:  # a window that closed while we were looking
+            pass
+    return None
+
+
+def place(window, out):
+    """Put the bar `out` px down from fully hidden (0 = above the screen, BAR_HEIGHT = fully out). In bspwm,
+    reserve the same strip at the top, so windows move with the bar."""
+    window.configure(y=out - BAR_HEIGHT)
+    d.flush()
+    if BSPWM:
+        subprocess.run(["bspc", "config", "top_padding", str(out)], stdout=subprocess.DEVNULL,
+                       stderr=subprocess.DEVNULL)
+
+
+def bar(cmd):
+    """Slide the bar out ("show") or away ("hide"): quick at first, easing into place."""
+    window = polybar_window()
+    if not window:
+        return
+    for frame in range(1, SLIDE_FRAMES + 1):
+        eased = 1 - (1 - frame / SLIDE_FRAMES) ** 3
+        place(window, round(BAR_HEIGHT * (eased if cmd == "show" else 1 - eased)))
+        time.sleep(SLIDE_SECONDS / SLIDE_FRAMES)
+
+
+def popup_open():
+    for name in POPUPS:
+        try:
+            pid = int(open(os.path.join(RUNTIME, f"{name}.pid")).read())
+            if name in open(f"/proc/{pid}/cmdline").read():
+                return True
+        except (OSError, ValueError):
+            pass
+    return False
+
+
+def workspace_empty():
+    """No (non-minimised) windows on the workspace you're on?"""
+    current = root.get_full_property(CURRENT, X.AnyPropertyType)
+    clients = root.get_full_property(CLIENTS, X.AnyPropertyType)
+    if not current or not clients:
+        return True
+    for wid in clients.value:
+        try:
+            window = d.create_resource_object("window", wid)
+            desktop = window.get_full_property(ON_DESKTOP, X.AnyPropertyType)
+            if not desktop or desktop.value[0] != current.value[0]:
+                continue
+            kind = window.get_full_property(TYPE, X.AnyPropertyType)
+            state = window.get_full_property(STATE, X.AnyPropertyType)
+            if (kind and NOT_WINDOWS & set(kind.value)) or (state and HIDDEN in state.value):
+                continue
+            return False
+        except Exception:  # the window closed while we were looking
+            continue
+    return True
+
+
+d.set_error_handler(lambda *_: None)  # polybar restarting mid-slide: just skip that frame
+for _ in range(50):  # launch.sh starts this alongside polybar: wait for the bar's window to appear
+    if polybar_window():
+        break
+    time.sleep(0.1)
+if polybar_window():
+    place(polybar_window(), BAR_HEIGHT)  # polybar starts shown: make room for it
+shown = True
+while True:
+    empty = workspace_empty()
+    if empty and not shown:
+        bar("show")
+        shown = True
+    elif not empty and shown and not popup_open():
+        bar("hide")
+        shown = False
+    time.sleep(POLL)

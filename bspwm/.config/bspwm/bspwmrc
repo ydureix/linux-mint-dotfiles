@@ -2,9 +2,13 @@
 # bspwm session: tiling windows with picom blur. Pick "bspwm" on the login screen (Cinnamon is still there too).
 # Keyboard shortcuts live in ~/.config/sxhkd/sxhkdrc. Reload this file with Super+Alt+R.
 
-# Monitor at its highest refresh rate (164.92 Hz). The port name (DP-0, DP-2…) can change between boots,
-# so set it on the first connected output. Cinnamon keeps its own setting in System Settings → Display.
-xrandr --output "$(xrandr | awk '/ connected/{print $1; exit}')" --mode 1920x1080 --rate 164.92
+# Monitor at its highest resolution and that resolution's highest refresh rate (2560x1440 at 239.97 Hz now),
+# worked out from what the monitor reports, so a different monitor needs no change here. The port name
+# (DP-0, DP-2…) can change between boots, so use the first connected output. xrandr lists that output's
+# largest mode first. Cinnamon keeps its own setting in System Settings → Display.
+set -- $(xrandr | awk '/ connected/{found=1; out=$1; next}
+    found && /^   /{best=0; for(i=2;i<=NF;i++){r=$i; gsub(/[*+]/,"",r); if(r+0>best) best=r+0}; print out, $1, best; exit}')
+[ $# -eq 3 ] && xrandr --output "$1" --mode "$2" --rate "$3"
 
 # NVIDIA settings saved in the NVIDIA app (digital vibrance etc., in ~/.nvidia-settings-rc). Cinnamon loads these
 # at login by itself; bspwm doesn't, so load them here, after the refresh rate change.
@@ -25,9 +29,10 @@ pgrep -f polkit-gnome-authentication-agent-1 >/dev/null ||
     /usr/lib/policykit-1-gnome/polkit-gnome-authentication-agent-1 &  # password box when an app asks for admin rights
 xsetroot -cursor_name left_ptr
 
-# Same wallpaper as Cinnamon (Cinnamon's setting stores it as a file:// address, so turn that into a path)
+# Same wallpaper as Cinnamon (Cinnamon's setting stores it as a file:// address, so turn that into a path),
+# stretched to the screen's resolution (--bg-fill would keep its shape and crop the edges instead)
 uri=$(gsettings get org.cinnamon.desktop.background picture-uri)
-feh --no-fehbg --bg-fill "$(python3 -c 'import sys, urllib.parse; print(urllib.parse.unquote(urllib.parse.urlparse(sys.argv[1].strip("\x27")).path))' "$uri")"
+feh --no-fehbg --bg-scale "$(python3 -c 'import sys, urllib.parse; print(urllib.parse.unquote(urllib.parse.urlparse(sys.argv[1].strip("\x27")).path))' "$uri")"
 
 # 10 workspaces, like Cinnamon. Polybar's dots and Alt+1..9, Alt+0 follow them.
 bspc monitor -d 1 2 3 4 5 6 7 8 9 10
@@ -49,5 +54,8 @@ bspc rule -a Pavucontrol state=floating
 bspc rule -a Nm-connection-editor state=floating
 bspc rule -a Blueman-manager state=floating
 bspc rule -a Gnome-calculator state=floating
+
+# Each new window opens on the next empty workspace (unless the one you're on is empty): ~/.config/bspwm/external-rules
+bspc config external_rules_command ~/.config/bspwm/external-rules
 
 ~/.config/polybar/launch.sh

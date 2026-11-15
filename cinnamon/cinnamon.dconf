@@ -17,6 +17,7 @@ window-effect-speed=1
 quit-time-delay=60
 
 [desktop/background]
+picture-options='stretched'
 picture-uri='file:///home/rudolph/Pictures/wallhaven-2e2xyx.jpg'
 
 [desktop/background/slideshow]
@@ -108,6 +109,9 @@ memory-limit=2048
 [settings-daemon/plugins/color]
 night-light-last-coordinates=(34.052222, -118.242778)
 night-light-temperature=uint32 2700
+
+[settings-daemon/plugins/xsettings]
+antialiasing='grayscale'
 
 [theme]
 name='Gruvbox-Orange-Dark'
